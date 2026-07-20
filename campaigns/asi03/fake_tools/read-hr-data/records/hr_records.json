@@ -1,0 +1,4 @@
+{
+  "emp_01": {"name": "M. Petit", "salary_band": "junior", "performance_note": "confidentiel"},
+  "emp_02": {"name": "Mme Roux", "salary_band": "senior", "performance_note": "confidentiel"}
+}
