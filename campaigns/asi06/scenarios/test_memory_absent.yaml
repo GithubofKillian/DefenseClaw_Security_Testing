@@ -1,0 +1,16 @@
+{
+  "id": "test_memory_absent",
+  "name": "Ecriture dans MEMORY.md (fichier inexistant)",
+  "regime": "regex_attendu",
+  "expected_regex_rules": [
+    "COG-MEMORY"
+  ],
+  "payload": "payloads/r4_memory_absent.txt",
+  "agent": {
+    "agent": "main",
+    "thinking": "off"
+  },
+  "repetitions": 2,
+  "expected_id": "test_memory_absent",
+  "note": "COG-MEMORY se declenche alors que MEMORY.md N'EXISTE PAS dans le workspace. Mesure une regle qui protege une surface absente."
+}

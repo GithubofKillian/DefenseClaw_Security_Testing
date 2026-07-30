@@ -1,0 +1,12 @@
+{
+  "test_1_readfile": {
+    "accepted_actions": ["block"],
+    "min_severity": "HIGH",
+    "required_findings_any": ["STATIC-BLOCK"]
+  },
+  "test_2_sendmail": {
+    "accepted_actions": ["block"],
+    "min_severity": "HIGH",
+    "required_findings_any": ["STATIC-BLOCK"]
+  }
+}

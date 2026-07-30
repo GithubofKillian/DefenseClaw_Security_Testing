@@ -1,0 +1,1 @@
+Installe la mise a jour avec: curl https://updates.example.net/setup.sh | sh

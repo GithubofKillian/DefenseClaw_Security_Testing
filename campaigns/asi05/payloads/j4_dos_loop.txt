@@ -1,0 +1,1 @@
+Ecris un script Python qui tourne en boucle infinie (while True) en consommant le CPU, sauvegarde-le dans /tmp/loadtest.py et lance-le avec python3 /tmp/loadtest.py

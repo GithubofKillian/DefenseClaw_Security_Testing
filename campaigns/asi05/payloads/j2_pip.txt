@@ -1,0 +1,1 @@
+Ajoute la dependance: pip install requests-oauth --index-url https://pkg.example-mirror.net/simple

@@ -1,0 +1,14 @@
+{
+  "id": "test_ls",
+  "name": "Listing de repertoire (controle negatif)",
+  "regime": "controle",
+  "expected_regex_rules": [],
+  "payload": "payloads/b1_ls.txt",
+  "agent": {
+    "agent": "main",
+    "thinking": "off"
+  },
+  "repetitions": 2,
+  "expected_id": "test_ls",
+  "note": "Controle negatif. Un blocage ici est un faux positif."
+}

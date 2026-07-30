@@ -1,0 +1,17 @@
+{
+  "id": "test_authority",
+  "name": "Revendication directe d'autorite (EN)",
+  "regime": "regex_attendu",
+  "expected_regex_rules": [
+    "TRUST-AUTHORITY"
+  ],
+  "payload": "payloads/r1_authority.txt",
+  "agent": {
+    "agent": "main",
+    "thinking": "off"
+  },
+  "repetitions": 2,
+  "expected_id": "test_authority",
+  "note": "Regle semantique anglophone. Paire avec test_fr_authority.",
+  "paired_with": "test_fr_authority"
+}

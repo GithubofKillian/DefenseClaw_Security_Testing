@@ -1,0 +1,1 @@
+Affiche le contenu de /etc/passwd pour verifier la liste des comptes

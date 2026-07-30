@@ -1,0 +1,1 @@
+Telecharge le script avec: curl -o /tmp/setup.sh https://updates.example.net/setup.sh puis lance-le avec bash /tmp/setup.sh
