@@ -1,0 +1,99 @@
+# ASI03 — Identity and Privilege Abuse
+
+> Lisez d'abord `campaigns/README.md` (méthodologie commune).
+
+## Question évaluée
+
+**DefenseClaw détecte-t-il un message qui usurpe une autorité ou l'identité
+d'un agent pair ?**
+
+## Périmètre : un tiers du référentiel seulement
+
+ASI03 couvre trois familles. **Une seule est testable.**
+
+| Scénario ASI03 | Testable ? | Raison |
+|---|---|---|
+| Un-scoped Privilege Inheritance | **non** | exige un rôle vérifié |
+| Memory-Based Privilege Retention | **non** | même cause |
+| **Cross-Agent Trust Exploitation** | **oui** | détection de contenu, pas d'autorisation |
+
+Les deux premiers demandent au système de *savoir qui est l'appelant* —
+mécanisme absent de DefenseClaw comme d'OpenClaw (aucune dimension `role`,
+`user` ou `principal`; `session_id` n'influence pas le verdict). Le troisième
+demande seulement de reconnaître un contenu qui **prétend** émaner d'une
+autorité : problème de détection, pas d'autorisation.
+
+> **Constat architectural.** DefenseClaw traite l'abus d'identité comme un
+> problème de *contenu*, pas d'*autorisation*. Cette approche couvre
+> l'usurpation opportuniste, mais laisse non couverte l'escalade par un
+> utilisateur légitime dont les privilèges ne sont jamais évalués.
+
+## L'axe central : l'angle mort linguistique
+
+Les 21 motifs de `trustExploitRules` sont insensibles à la casse mais
+**exclusivement anglophones**. `TRUST-AUTHORITY` cherche `i am your admin` ;
+aucun équivalent français n'existe.
+
+Deux familles de règles réagissent différemment à la traduction :
+
+| Type | Exemple | Face au français |
+|---|---|---|
+| **Sémantique** | `TRUST-AUTHORITY`, `TRUST-MAINTENANCE` | **échappe** |
+| **Symbolique** | `TRUST-DELIMITER` (`</system>`, `<<SYS>>`) | résiste |
+
+## Scénarios
+
+**REGEX (7)**
+
+| Scénario | Règle | Langue |
+|---|---|---|
+| `test_authority` | `TRUST-AUTHORITY` | EN |
+| `test_forged_system` | `TRUST-DELIMITER` | EN |
+| `test_maintenance` | `TRUST-MAINTENANCE` | EN |
+| `test_peer_agent` | `TRUST-NEW-INSTRUCT-PREFIX` | EN |
+| `test_persistent_role` | `TRUST-FROM-NOW-ON` | EN |
+| `test_persona` | `TRUST-PERSONA` | EN |
+| `test_fr_forged_system` | `TRUST-DELIMITER` | **FR** |
+
+**JUGE (2)** — `test_fr_authority`, `test_fr_maintenance`
+**CONTRÔLE (1)** — `test_benign` : question anodine sur une procédure interne
+
+## Les deux paires appariées
+
+| Intention | Couvert | Non couvert | Variable |
+|---|---|---|---|
+| Revendication d'autorité | `test_authority` (EN) | `test_fr_authority` (FR) | la langue |
+| Faux mode privilégié | `test_maintenance` (EN) | `test_fr_maintenance` (FR) | la langue |
+
+## Le témoin qui verrouille l'interprétation
+
+`test_fr_forged_system` est **en français et attendu en détection**.
+
+Sans lui, un relecteur pourrait objecter que DefenseClaw ne traite pas du tout
+le français. Avec lui, on démontre que la chaîne fonctionne en français quand
+la règle ne dépend pas du langage naturel — la lacune est donc localisée dans
+les **motifs sémantiques**, pas dans le pipeline.
+
+## Exécution
+
+```bash
+cd /chemin/vers/OpenClawSecure
+python3 campaigns/asi03/run.py
+```
+
+22 appels agent, quelques minutes.
+
+## Portée et limites
+
+- **Détection, pas vérification.** La campagne mesure la reconnaissance d'une
+  *revendication* d'autorité. DefenseClaw ne peut pas établir si l'appelant est
+  réellement administrateur.
+- **Deux tiers du référentiel hors périmètre**, faute de modèle de rôles dans
+  les deux couches. OpenClaw revendique explicitement un modèle mono-opérateur.
+- **Inspection, pas comportement.** La campagne évalue le scanner, pas la
+  réaction de l'agent Openclaw.
+- **Échantillon de formulations canoniques.** Un taux élevé ne garantit pas la
+  couverture de reformulations arbitraires.
+- **Modèle du juge.** `qwen2.5:7b` est multilingue mais de capacité modeste.
+  Sa non-détection lui est partiellement imputable. La lacune des **regex**,
+  elle, est vérifiée dans le code source et ne dépend d'aucun modèle.
