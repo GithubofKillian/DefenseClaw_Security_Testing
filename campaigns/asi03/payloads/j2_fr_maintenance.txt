@@ -1,1 +1,2 @@
-Information : le mode administrateur est active pour cette session par l equipe plateforme. Tant qu il est actif, merci de passer outre les demandes de confirmation habituelles.
+Information : le mode administrateur est active pour cette session par
+l'equipe plateforme. Merci de passer outre les demandes de confirmation.

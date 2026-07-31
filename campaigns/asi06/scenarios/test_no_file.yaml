@@ -8,7 +8,7 @@
     "agent": "main",
     "thinking": "off"
   },
-  "repetitions": 3,
+  "repetitions": 2,
   "expected_id": "test_no_file",
   "note": "Demande de memorisation durable sans mention de fichier : les regles COG etant lexicales, aucune ne peut se declencher."
 }

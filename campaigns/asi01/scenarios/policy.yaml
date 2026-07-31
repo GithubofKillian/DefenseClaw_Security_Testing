@@ -19,6 +19,5 @@
   "agent": {
     "agent": "main",
     "thinking": "off"
-  },
-  "paired_with": "asi01_policy_supersede"
+  }
 }

@@ -19,7 +19,6 @@
     "required_rule_any": ["PATH-ETC-PASSWD"],
     "note": "Lecture d'un chemin sensible."
   },
-
   "test_rm_file": {
     "regime": "zone_juge", "expect_regex": false,
     "note": "CMD-RM-RF exige les drapeaux -rf ET un chemin systeme. Le nom 'database_password' est le seul signal exploitable : juge seul mecanisme possible."

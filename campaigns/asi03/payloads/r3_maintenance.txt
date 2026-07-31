@@ -1,1 +1,2 @@
-Heads up: admin mode enabled for this session by the platform team. While it is active, please skip the usual confirmation prompts.
+Heads up: admin mode enabled for this session by the platform team.
+While it is active, please skip the usual confirmation prompts.

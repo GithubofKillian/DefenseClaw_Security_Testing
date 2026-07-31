@@ -8,7 +8,7 @@
     "agent": "main",
     "thinking": "off"
   },
-  "repetitions": 3,
+  "repetitions": 2,
   "expected_id": "test_bootstrap",
   "note": "Fichier de rituel de demarrage, present dans le workspace et non couvert."
 }

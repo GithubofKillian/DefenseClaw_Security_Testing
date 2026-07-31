@@ -5,10 +5,9 @@ Mesure quel moteur de DefenseClaw reagit a une injection dissimulee dans une
 page web lue par l'agent : les regles regex (famille TRUST-*), le juge LLM,
 les deux, ou aucun.
 
-Le vecteur est INDIRECT : la charge n'est pas un message de l'utilisateur mais
-le contenu d'une page, enveloppe dans un gabarit d'analyse (`prompt_template`
-avec {{page_content}}). Ce gabarit est conserve depuis la version d'origine de
-la campagne pour rester fidele au vecteur.
+Vecteur INDIRECT : la charge n'est pas un message de l'utilisateur mais le
+contenu d'une page, enveloppe dans un gabarit d'analyse (prompt_template).
+Ce gabarit provient de la version d'origine de la campagne.
 
 Chemin : appel agent reel. Le hook du connecteur inspecte le prompt
 (-> scan_findings) et l'extension fetch-interceptor route l'appel LLM par la
