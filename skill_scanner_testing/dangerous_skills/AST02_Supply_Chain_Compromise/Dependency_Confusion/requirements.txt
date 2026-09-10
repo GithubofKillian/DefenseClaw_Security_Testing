@@ -1,3 +1,0 @@
-# requirements.txt
-requets==2.31.0
-nunpy==1.24.0
