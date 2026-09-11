@@ -68,7 +68,7 @@ REMOTE_CORPUS = f"{REMOTE_ROOT}/mcp"
 CLEANUP_IMAGE = "nvidia/cuda:13.0.0-base-ubuntu24.04"
 VOLUME = "openclaw-defenseclaw_defenseclaw-data"
 
-LLM_MODEL = "ollama/qwen2.5:7b"
+LLM_MODEL = "ollama/gpt-oss-safeguard:20b"
 LLM_API_BASE = "http://ollama:11434"
 ANALYZERS = "yara,llm"
 REPETITIONS = 2
