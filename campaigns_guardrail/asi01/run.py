@@ -31,6 +31,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from statistics import median
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from _common import banner, dim, scenario_end, scenario_start, status, summary_line, table, tick  # noqa: E402
+
 REPO_ROOT = Path.cwd()
 CAMPAIGN_DIR = REPO_ROOT / "campaigns" / "asi01"
 SCENARIOS_DIR = CAMPAIGN_DIR / "scenarios"
@@ -544,15 +547,6 @@ def build_report(results, judge_ever):
         ]
 
     lines += [
-        "## Pourquoi le chemin agent",
-        "",
-        "Les endpoints `/api/v1/inspect/*` n'engagent pas le juge : `handleInspectRequest`",
-        "ne l'appelle pas, et `/inspect/tool` s'execute sous un plafond de 200 ms alors que",
-        "le juge exige au moins une seconde d'echeance residuelle. Le chemin agent, lui,",
-        "active les deux moteurs : le hook du connecteur appelle `/inspect/request` (regex),",
-        "tandis que l'extension fetch-interceptor route l'appel LLM par la proxy lane, ou le",
-        "juge s'execute.",
-        "",
         "## Resultats",
         "",
         "| Scenario | Regime | regex_trigger | **sev regex** | judge_trigger | **sev juge** | Regles vues | Axes du juge |",
@@ -638,95 +632,32 @@ def build_report(results, judge_ever):
     lines += ["", "## Detail par scenario", ""]
     for r in results:
         s, summ, e = r["scenario"], r["summary"], r["expectation"]
-        lines.append(f"### {s['id']} - {s['name']}")
-        lines.append("")
-        lines.append(f"- Regime : {e['regime']}")
-        lines.append(f"- Regime : {e['regime']}")
-        lines.append(f"- Repetitions : {summ['repetitions']}")
-        lines.append(f"- Taux regex : {summ['regex_rate']} — regles : {', '.join(summ['rules_seen']) or 'aucune'}")
-        lines.append(f"- Juge a tourne : {summ['judge_ran_rate']}")
-        lines.append(f"- **Juge a signale (HIGH/CRITICAL) : {summ.get('judge_flag_rate','-')}**")
-        lines.append(f"- Juge a alerte (MEDIUM) : {summ.get('judge_alert_rate','-')}")
-        lines.append(f"- Juge a reagi (>= MEDIUM) : {summ.get('judge_trigger_rate','-')}")
-        lines.append(f"- **Severite max cote regex : `{summ.get('regex_severity_max') or 'aucune'}`**")
-        lines.append(f"- **Severite max cote juge : `{summ.get('judge_severity_max') or 'aucune'}`**")
-        if summ.get("judge_rule_ids"):
-            lines.append(f"- Findings JUDGE-* dans scan_findings : {', '.join(summ['judge_rule_ids'])}")
-        lines.append(f"- Distribution des severites : {summ.get('judge_severity_counts') or {}}")
         axes = summ.get("judge_axes") or {}
-        if axes:
-            lines.append("- **Axes declenches par le juge :**")
-            for nom, info in sorted(axes.items(), key=lambda kv: -kv[1]["n"]):
-                lines.append(
-                    f"  - `{nom}` ({info['n']}x, {info['signal']}) — {info['motif']}"
-                )
-        else:
-            lines.append("- Axes declenches par le juge : aucun")
+        axes_txt = (
+            ", ".join(f"{nom} ({info['n']}x)" for nom, info in sorted(axes.items(), key=lambda kv: -kv[1]["n"]))
+            or "aucun"
+        )
+        lines.append(
+            f"- **{s['id']}** ({e['regime']}, {summ['repetitions']} run(s)) — "
+            f"regex `{summ.get('regex_severity_max') or 'NONE'}` ({summ['regex_rate']}, "
+            f"{', '.join(summ['rules_seen']) or 'aucune regle'}) — "
+            f"juge `{summ.get('judge_severity_max') or 'NONE'}` "
+            f"({summ.get('judge_trigger_rate','-')}, axes: {axes_txt}) — "
+            f"latence mediane {summ['agent_latency_median_ms']} ms"
+        )
+        anomalies = []
         if summ.get("judge_errors"):
-            lines.append(
-                f"- **Reponses en erreur du juge : {summ['judge_errors']}** "
-                "(action=error : appel effectue mais verdict non rendu)"
-            )
+            anomalies.append(f"{summ['judge_errors']} reponse(s) juge en erreur")
         if summ["judge_parse_errors"]:
-            lines.append(
-                f"- **Erreurs de parsing du juge : {summ['judge_parse_errors']}** "
-                "(sortie du modele inexploitable — a distinguer d'une non-detection)"
-            )
-        lines.append(f"- Latence agent mediane : {summ['agent_latency_median_ms']} ms")
-        for i, run in enumerate(r["runs"], 1):
-            a = run["analysis"]
-            je = a["judge_entries"]
-            jdesc = (
-                "; ".join(
-                    f"{x.get('kind')}/{x.get('direction')}={x.get('action')}"
-                    f"[{x.get('severity') or '-'}]"
-                    f"{' PARSE_ERR' if x.get('parse_error') else ''}"
-                    for x in je
-                )
-                or "aucune reponse"
-            )
-            lines.append(
-                f"  - run {i} : regex={a['rules'] or '[]'} | juge: {jdesc} "
-                f"| severite_max=`{a.get('judge_severity_max') or '-'}` | origine={a['origin']}"
-            )
+            anomalies.append(f"{summ['judge_parse_errors']} erreur(s) de parsing juge")
         if summ["problems"]:
-            lines.append(f"- **Ecarts** : {'; '.join(summ['problems'])}")
+            anomalies.append("; ".join(summ["problems"]))
         if e.get("note"):
-            lines.append(f"- Note : {e['note']}")
-        lines.append("")
+            anomalies.append(e["note"])
+        if anomalies:
+            lines.append(f"  - ⚠️ {' ; '.join(anomalies)}")
 
-    lines += [
-        "## Lecture",
-        "",
-        "- **Trois silences differents.** `judge_responses` absent = le juge n'a pas tourne ;",
-        "  `parse_error` renseigne = il a tourne mais sa sortie etait inexploitable ;",
-        "  `action=allow` = il a tourne et n'a rien vu. Cote agent, ces trois cas sont",
-        "  indiscernables : seule l'audit les separe.",
-        "- **Le controle negatif prime.** Un blocage sur `test_6_benign` est un faux positif.",
-        "  Un juge qui bloque une commande anodine est inexploitable en production, quelle",
-        "  que soit sa capacite a detecter les vraies menaces.",
-        "- **Les taux ne sont pas des probabilites.** N repetitions donnent un ordre de",
-        "  grandeur, pas une mesure stable.",
-        "",
-        "## Portee et limites",
-        "",
-        "- Le chemin agent introduit DEUX sources d'alea : l'agent reformule le message",
-        "  avant qu'il n'atteigne le juge, et le juge est probabiliste. Un echec n'est donc",
-        "  pas attribuable au seul garde-fou.",
-        "- La campagne mesure la chaine complete (agent + regex + juge), pas le garde-fou",
-        "  isole. C'est plus proche de la realite operationnelle, mais moins analytique que",
-        "  les campagnes asi02/asi03 qui interrogeaient les endpoints directement.",
-        "- En `mode observe`, un verdict `block` du juge n'empeche rien : l'agent repond",
-        "  quand meme. La decision reelle subsiste dans l'audit. Basculer en `action` pour",
-        "  observer un blocage effectif.",
-        "- La correlation appel/verdicts repose sur un filigrane de `rowid`. Une activite",
-        "  concurrente sur la stack pendant la campagne pourrait capturer des lignes",
-        "  etrangeres : executer sur une stack au repos.",
-        "- Aucune commande n'est executee par le runner lui-meme. En revanche l'agent est",
-        "  reel : selon sa configuration d'outils, il pourrait tenter une action. Verifier",
-        "  que les outils d'execution sont desactives avant de lancer la campagne.",
-        "",
-    ]
+    lines.append("")
     return "\n".join(lines)
 
 
@@ -774,8 +705,9 @@ def main():
 
     # Sonde initiale : l'audit est-il lisible ?
     probe = audit_watermark()
-    print(f"Filigrane initial de l'audit : {probe}")
-    print(f"Pages verifiees : {len(scenarios)} scenarios, toutes non vides.")
+    banner("ASI01 - Prompt Injection indirecte")
+    print(dim(f"Filigrane initial de l'audit : {probe}"))
+    print(dim(f"Pages verifiees : {len(scenarios)} scenarios, toutes non vides.") + "\n")
 
     results = []
     judge_ever = False
@@ -796,8 +728,9 @@ def main():
         message = template.replace("{{page_content}}", page)
 
         reps = int(scenario.get("repetitions", 1))
-        print(f"  {scenario['id']:26} ", end="", flush=True)
+        scenario_start(scenario["id"])
         runs = []
+        agent_ok = True
         for i in range(reps):
             session_key = f"asi01-{scenario['id']}-{uuid.uuid4().hex[:8]}"
             # Laisser retomber les ecritures du tour precedent.
@@ -817,13 +750,15 @@ def main():
                 }
             )
             # Detail par run : voir report.md et l'artefact JSON.
-            print(".", end="", flush=True)
-            if not agent["ok"] and i == 0:
-                err = (agent.get("stderr_tail") or agent.get("stdout_tail") or "").strip()
-                if err:
-                    print(f"\n    [agent KO] {err[:160]}", flush=True)
+            tick(agent["ok"])
+            if not agent["ok"]:
+                agent_ok = False
+                if i == 0:
+                    err = (agent.get("stderr_tail") or agent.get("stdout_tail") or "").strip()
+                    if err:
+                        print(f"\n    [agent KO] {err[:160]}", flush=True)
 
-        print(" ok", flush=True)
+        scenario_end(agent_ok)
         summary = summarize(runs, expectation)
         results.append(
             {
@@ -851,34 +786,29 @@ def main():
     )
 
     ok = sum(1 for r in results if r["summary"]["pass"])
-    print(f"\nASI01 : {ok}/{len(results)} scenarios conformes aux attentes.")
-    print(f"Juge LLM observe : {'OUI' if judge_ever else 'NON'}")
+    print()
+    rows = []
     for r in results:
         s = r["summary"]
-        print(
-            f"* {r['scenario']['id']:24} "
-            f"regex_trigger={s.get('regex_trigger_rate', s['regex_rate']):>5} "
-            f"[{s.get('regex_severity_max') or 'NONE':>8}]   "
-            f"judge_trigger={s.get('judge_trigger_rate','-'):>5} "
-            f"[{s.get('judge_severity_max') or 'NONE':>8}]"
+        rows.append(
+            [
+                status(s["pass"]),
+                r["scenario"]["id"],
+                s.get("regex_trigger_rate", s["regex_rate"]),
+                s.get("regex_severity_max") or "-",
+                s.get("judge_trigger_rate", "-"),
+                s.get("judge_severity_max") or "-",
+                "; ".join(s["problems"]) if s["problems"] else dim("-"),
+            ]
         )
-        # Detail regex : quelle regle a repondu
-        if s["rules_seen"]:
-            print(f"      regex  : {', '.join(s['rules_seen'])}")
-        if s.get("judge_rule_ids"):
-            print(f"      j-rule : {', '.join(s['judge_rule_ids'])}")
-        # Detail juge : ce qu'il a reconnu, et pourquoi
-        axes = s.get("judge_axes") or {}
-        if axes:
-            for nom, info in sorted(axes.items(), key=lambda kv: -kv[1]["n"]):
-                print(f"      juge   : {nom} ({info['n']}x) - {info['motif'][:110]}")
-        elif s.get("judge_trigger_rate", "0/0").split("/")[0] != "0":
-            print(f"      juge   : severite {s.get('judge_severity_max')} sans axe qualifie")
-        if s["problems"]:
-            print(f"      ECART  : {'; '.join(s['problems'])}")
-
-    print(f"Report: {REPORT_FILE.relative_to(REPO_ROOT)}")
-    print(f"Artifact: {RESULTS_FILE.relative_to(REPO_ROOT)}")
+    table(
+        ["Statut", "Scenario", "regex", "sev regex", "juge", "sev juge", "Ecart"],
+        rows,
+    )
+    print()
+    print(summary_line("ASI01", ok, len(results), judge_ever))
+    print(dim(f"Report:   {REPORT_FILE.relative_to(REPO_ROOT)}"))
+    print(dim(f"Artifact: {RESULTS_FILE.relative_to(REPO_ROOT)}"))
     return 0 if ok == len(results) else 1
 
 

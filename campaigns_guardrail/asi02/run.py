@@ -40,6 +40,9 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from _common import banner, dim, scenario_end, scenario_start, status, summary_line, table  # noqa: E402
+
 REPO_ROOT = Path.cwd()
 CAMPAIGN_DIR = REPO_ROOT / "campaigns" / "asi02"
 SCENARIOS_DIR = CAMPAIGN_DIR / "scenarios"
@@ -293,25 +296,6 @@ def build_report(results, original_config, campaign_config, blocked_tools):
         f"- Outils places sur la block-list : {', '.join(blocked_tools) or 'aucun'}",
         f"- Resultat global : {pass_count}/{len(results)} scenarios conformes",
         "",
-        "## Methodologie",
-        "",
-        "La campagne interroge directement le moteur d'admission d'outil de DefenseClaw",
-        "via `POST /api/v1/inspect/tool`, sans passer par l'agent. Pour chaque scenario,",
-        "le runner place l'outil vise sur la block-list statique (`POST /enforce/block`),",
-        "soumet l'appel d'outil qu'un agent detourne aurait emis, puis compare le verdict",
-        "aux attentes declarees dans `expected/expected.json`.",
-        "",
-        "Le verdict attendu (`block` / `HIGH` / `STATIC-BLOCK`) est rendu a l'etage 1 de",
-        "la cascade de decision, c'est-a-dire avant toute analyse des arguments et avant",
-        "le juge LLM. La campagne est donc deterministe.",
-        "",
-        "Le runner orchestre depuis l'hote en Python, mais delegue chaque requete HTTP au",
-        "Node embarque dans le conteneur openclaw-gateway : le port 18970 de DefenseClaw",
-        "est declare `expose` et non `ports`, il n'est donc pas joignable depuis l'hote.",
-        "",
-        "En fin d'execution, le runner retire les blocages et restaure la configuration",
-        "d'origine, y compris en cas d'erreur.",
-        "",
         "## Resultats",
         "",
         "| Scenario | Outil | Attendu | Observe | Findings | Verdict |",
@@ -334,42 +318,18 @@ def build_report(results, original_config, campaign_config, blocked_tools):
 
     lines += ["", "## Detail par scenario", ""]
     for r in results:
-        scenario = r["scenario"]
-        verdict = r["verdict"]
-        lines.append(f"### {scenario['id']} - {scenario['name']}")
-        lines.append("")
-        lines.append(f"- Vecteur : {scenario.get('vector', 'n/a')}")
-        lines.append(f"- Outil cible : `{scenario['request']['tool']}`")
-        lines.append(f"- Action : `{verdict.get('action')}`")
-        lines.append(
-            f"- Raw action : `{verdict.get('raw_action', verdict.get('action'))}`"
+        scenario, verdict, comp = r["scenario"], r["verdict"], r["comparison"]
+        findings = ", ".join(verdict.get("findings") or []) or "aucun"
+        line = (
+            f"- **{scenario['id']}** (`{scenario['request']['tool']}`) — "
+            f"action `{verdict.get('action')}`/`{verdict.get('severity')}` — "
+            f"findings: {findings}"
         )
-        lines.append(f"- Severite : `{verdict.get('severity')}`")
-        lines.append(
-            f"- Findings : {', '.join(verdict.get('findings') or []) or 'aucun'}"
-        )
-        lines.append(f"- Raison renvoyee : {verdict.get('reason', 'n/a')}")
-        lines.append(f"- Interpretation : {reasoning_for(r['comparison'])}")
-        lines.append("")
+        if not comp["pass"]:
+            line += f"  ⚠️ {reasoning_for(comp)}"
+        lines.append(line)
 
-    lines += [
-        "## Portee et limites",
-        "",
-        "- La campagne mesure uniquement la direction positive : un outil interdit est-il "
-        "refuse. Elle ne verifie pas qu'un outil non interdit reste autorise, choix de "
-        "perimetre assume.",
-        "- Le blocage porte sur la CAPACITE (l'outil entier), pas sur ses arguments : "
-        "`read_file` est refuse quel que soit le chemin demande. Le scope par fichier "
-        "n'est pas exprimable par une block-list d'outils.",
-        "- Les verdicts refletent la block-list injectee par le runner, retiree en fin "
-        "de campagne.",
-        "- DefenseClaw ne porte aucune dimension d'identite (role, utilisateur, session) "
-        "dans sa decision : sa granularite maximale est `(connecteur, outil)`. Une "
-        "politique d'outil s'applique donc a l'installation entiere.",
-        "- La campagne evalue l'admission d'outil, pas l'execution reelle par l'agent : "
-        "elle ne dit pas si un agent tenterait effectivement cet appel.",
-        "",
-    ]
+    lines.append("")
     return "\n".join(lines)
 
 
@@ -422,6 +382,8 @@ def main():
     for tool in blocked_tools:
         enforce_block(tool)
 
+    banner("ASI02 - Tool Misuse")
+    print(dim(f"Outils places sur la block-list : {', '.join(blocked_tools) or 'aucun'}") + "\n")
     try:
         warmup()
         for scenario in scenarios:
@@ -430,13 +392,16 @@ def main():
                 raise RunnerError(
                     f"Attente manquante pour {scenario['expected_id']}"
                 )
+            scenario_start(scenario["id"])
             verdict = inspect_tool(scenario)
+            comparison = compare_verdict(verdict, expectation)
+            scenario_end(comparison["pass"])
             results.append(
                 {
                     "scenario": scenario,
                     "expectation": expectation,
                     "verdict": verdict,
-                    "comparison": compare_verdict(verdict, expectation),
+                    "comparison": comparison,
                 }
             )
     finally:
@@ -476,9 +441,24 @@ def main():
     )
 
     pass_count = sum(1 for r in results if r["comparison"]["pass"])
-    print(f"ASI02 complete: {pass_count}/{len(results)} scenarios met the expectation.")
-    print(f"Report: {REPORT_FILE.relative_to(REPO_ROOT)}")
-    print(f"Artifact: {RESULTS_FILE.relative_to(REPO_ROOT)}")
+    print()
+    rows = []
+    for r in results:
+        v, comp = r["verdict"], r["comparison"]
+        rows.append(
+            [
+                status(comp["pass"]),
+                r["scenario"]["id"],
+                r["scenario"]["request"]["tool"],
+                f"{v.get('action')}/{v.get('severity')}",
+                ", ".join(v.get("findings") or []) or dim("-"),
+            ]
+        )
+    table(["Statut", "Scenario", "Outil", "Verdict", "Findings"], rows)
+    print()
+    print(summary_line("ASI02", pass_count, len(results)))
+    print(dim(f"Report:   {REPORT_FILE.relative_to(REPO_ROOT)}"))
+    print(dim(f"Artifact: {RESULTS_FILE.relative_to(REPO_ROOT)}"))
     return 0 if pass_count == len(results) else 1
 
 
