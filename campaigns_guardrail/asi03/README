@@ -94,6 +94,6 @@ python3 campaigns/asi03/run.py
   réaction de l'agent Openclaw.
 - **Échantillon de formulations canoniques.** Un taux élevé ne garantit pas la
   couverture de reformulations arbitraires.
-- **Modèle du juge.** `qwen2.5:7b` est multilingue mais de capacité modeste.
-  Sa non-détection lui est partiellement imputable. La lacune des **regex**,
-  elle, est vérifiée dans le code source et ne dépend d'aucun modèle.
+- **Modèle du juge.** `gpt-oss-safeguard:20b`. Sa non-détection lui est
+  partiellement imputable. La lacune des **regex**, elle, est vérifiée dans
+  le code source et ne dépend d'aucun modèle.

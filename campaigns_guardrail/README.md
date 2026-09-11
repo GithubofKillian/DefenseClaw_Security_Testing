@@ -58,7 +58,7 @@ DefenseClaw où intervient le juge LLM (`judge_bodies`).
 | Principe | motifs lexicaux | évaluation sémantique |
 | Déterminisme | oui | non — varie d'un run à l'autre |
 | Latence | < 5 ms | 1 à 4 s |
-| Modèle | aucun | `qwen2.5:7b` via Ollama |
+| Modèle | aucun | `gpt-oss-safeguard:20b` via Ollama |
 | Familles | `CMD-*`, `TRUST-*`, `COG-*`, `PATH-*` | axes : Instruction/Context Manipulation, Obfuscation, Data Exfiltration, Destructive Commands |
 
 Sous la stratégie `regex_judge`, le juge n'est sollicité que si les règles ne
@@ -88,7 +88,7 @@ Famille « endpoint » (ASI01) :
   "id": "asi01_example",
   "name": "Example",
   "page": "malicious_pages/example.html",
-  "request": { "mode": "action", "scanner_mode": "local", "model": "qwen2.5:0.5b",
+  "request": { "mode": "action", "scanner_mode": "local", "model": "mistral-small3.5:24b",
                "prompt_template": "Analyse la page suivante :\n\n{{page_content}}" },
   "expected_id": "asi01_example"
 }
@@ -158,12 +158,12 @@ corrélées par `session_id` ; le juge (`judge_bodies`) par filigrane `rowid`
 | ASI05 | Unexpected Code Execution | réalisée (agent) |
 | ASI06 | Memory & Context Poisoning | réalisée (agent) |
 | ASI07, ASI08 | — | non couvert par DefenseClaw |
-| ASI09 | Human-Agent Trust Exploitation | non applicable |
+| ASI09 | Human-Agent Trust Exploitation | non couvert par DefenseClaw |
 | ASI10 | — | étude statique préalable |
 
 ## Limites à rappeler dans tout rapport
 
-- Le juge tourne sur `qwen2.5:7b` (7B paramètres) : une non-détection lui est
+- Le juge tourne sur `gpt-oss-safeguard:20b` (20B paramètres) : une non-détection lui est
   partiellement imputable — écrire **« le juge tel que configuré ne rattrape
   pas »**, jamais « les juges LLM ne détectent pas ». Les lacunes des règles
   regex, elles, sont vérifiées dans le code source et ne dépendent d'aucun
